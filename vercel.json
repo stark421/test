@@ -1,9 +1,12 @@
 {
   "version": 2,
-  "outputDirectory": "frontend/dist",
   "functions": {
     "api/**/*.js": {
       "includeFiles": "backend/data/**"
     }
-  }
+  },
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/(.*)", "dest": "/public/$1" }
+  ]
 }

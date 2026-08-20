@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "cd backend && npm run dev",
-    "build": "cd frontend && npm install && npm run build",
+    "build": "cd frontend && npm install && npm run build && cd .. && rm -rf public && cp -r frontend/dist public",
     "start": "cd backend && npm start"
   },
   "dependencies": {
