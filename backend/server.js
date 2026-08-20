@@ -57,3 +57,13 @@ if (!process.env.VERCEL) {
 
 // 导出 app 供 Vercel 使用
 module.exports = app;
+
+// 全局错误处理（放在最后）
+app.use((err, req, res, next) => {
+  console.error('Server Error:', err);
+  res.status(500).json({
+    success: false,
+    error: err.message,
+    stack: process.env.NODE_ENV === 'production' ? undefined : err.stack
+  });
+});
