@@ -3,7 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 
 const COLORS = ['#1890ff', '#52c41a', '#faad14', '#f5222d', '#722ed1', '#13c2c2', '#eb2f96', '#a0d911'];
 
-function PieChartSVG({ data, nameKey, valueKey, title, formatValue }) {
+function PieChartSVG({ data, nameKey, valueKey, title, formatValue, size = 'normal' }) {
   const [hoveredIndex, setHoveredIndex] = useState(null);
 
   const getArcPath = (cx, cy, r, startAngle, endAngle) => {
@@ -34,14 +34,23 @@ function PieChartSVG({ data, nameKey, valueKey, title, formatValue }) {
     });
   }, [data, total, valueKey]);
 
+  const viewBox = size === 'large' ? '0 0 400 400' : '0 0 300 300';
+  const cx = size === 'large' ? 200 : 150;
+  const cy = size === 'large' ? 200 : 150;
+  const baseR = size === 'large' ? 140 : 100;
+  const hoverR = size === 'large' ? 155 : 110;
+  const textY1 = size === 'large' ? 370 : 280;
+  const textY2 = size === 'large' ? 395 : 300;
+  const svgClass = size === 'large' ? 'pie-svg pie-svg-large' : 'pie-svg';
+
   return (
     <div className="chart-card">
       <h3>{title}</h3>
       <div className="pie-chart-container">
-        <svg viewBox="0 0 300 300" className="pie-svg">
+        <svg viewBox={viewBox} className={svgClass}>
           {slices.map((slice, i) => {
-            const r = hoveredIndex === i ? 110 : 100;
-            const path = getArcPath(150, 150, r, slice.startAngle, slice.endAngle);
+            const r = hoveredIndex === i ? hoverR : baseR;
+            const path = getArcPath(cx, cy, r, slice.startAngle, slice.endAngle);
             return (
               <path
                 key={slice[nameKey]}
@@ -49,7 +58,7 @@ function PieChartSVG({ data, nameKey, valueKey, title, formatValue }) {
                 fill={slice.color}
                 stroke="#fff"
                 strokeWidth="2"
-                style={{ transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)', transformOrigin: '150px 150px' }}
+                style={{ transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)', transformOrigin: `${cx}px ${cy}px` }}
                 onMouseEnter={() => setHoveredIndex(i)}
                 onMouseLeave={() => setHoveredIndex(null)}
               />
@@ -57,10 +66,10 @@ function PieChartSVG({ data, nameKey, valueKey, title, formatValue }) {
           })}
           {hoveredIndex !== null && (
             <>
-              <text x="150" y="280" textAnchor="middle" fill="#333" fontSize="14" fontWeight="bold">
+              <text x={cx} y={textY1} textAnchor="middle" fill="#333" fontSize="14" fontWeight="bold">
                 {slices[hoveredIndex][nameKey]}
               </text>
-              <text x="150" y="300" textAnchor="middle" fill="#666" fontSize="12">
+              <text x={cx} y={textY2} textAnchor="middle" fill="#666" fontSize="12">
                 {formatValue ? formatValue(slices[hoveredIndex][valueKey], slices[hoveredIndex]) : slices[hoveredIndex][valueKey]}
                 {' '}({((slices[hoveredIndex][valueKey] / total) * 100).toFixed(1)}%)
               </text>
@@ -68,8 +77,13 @@ function PieChartSVG({ data, nameKey, valueKey, title, formatValue }) {
           )}
         </svg>
         <div className="pie-legend">
-          {slices.map((slice) => (
-            <div key={slice[nameKey]} className="legend-item">
+          {slices.map((slice, i) => (
+            <div
+              key={slice[nameKey]}
+              className={`legend-item ${hoveredIndex === i ? 'legend-item-active' : ''}`}
+              onMouseEnter={() => setHoveredIndex(i)}
+              onMouseLeave={() => setHoveredIndex(null)}
+            >
               <span className="legend-color" style={{ background: slice.color }}></span>
               <span className="legend-label">{slice[nameKey]}</span>
             </div>
@@ -178,48 +192,51 @@ function Dashboard({ dailyData, summaryData, topProducts, paymentData, storeData
       </div>
 
       {/* 扇形图区域 */}
-      <div className="charts-grid">
-        {paymentData && paymentData.length > 0 && (
-          <PieChartSVG
-            data={paymentData}
-            nameKey="payment"
-            valueKey="order_count"
-            title="支付方式分布"
-            formatValue={(val) => `${val} 单`}
-          />
-        )}
+      <div className="pie-layout">
+        <div className="pie-left">
+          {topProducts && topProducts.length > 0 && (
+            <PieChartSVG
+              data={topProducts}
+              nameKey="product_name"
+              valueKey="total_amount"
+              title="商品销售额分布"
+              formatValue={(val) => formatCurrency(val)}
+              size="large"
+            />
+          )}
+        </div>
 
-        {storeData && storeData.length > 0 && (
-          <PieChartSVG
-            data={storeData}
-            nameKey="store_name"
-            valueKey="total_amount"
-            title="门店营业额分布"
-            formatValue={(val) => formatCurrency(val)}
-          />
-        )}
-      </div>
+        <div className="pie-right">
+          {paymentData && paymentData.length > 0 && (
+            <PieChartSVG
+              data={paymentData}
+              nameKey="payment"
+              valueKey="order_count"
+              title="支付方式分布"
+              formatValue={(val) => `${val} 单`}
+            />
+          )}
 
-      <div className="charts-grid">
-        {categoryData && categoryData.length > 0 && (
-          <PieChartSVG
-            data={categoryData}
-            nameKey="category"
-            valueKey="total_amount"
-            title="商品品类营业额分布"
-            formatValue={(val) => formatCurrency(val)}
-          />
-        )}
+          {storeData && storeData.length > 0 && (
+            <PieChartSVG
+              data={storeData}
+              nameKey="store_name"
+              valueKey="total_amount"
+              title="门店营业额分布"
+              formatValue={(val) => formatCurrency(val)}
+            />
+          )}
 
-        {topProducts && topProducts.length > 0 && (
-          <PieChartSVG
-            data={topProducts}
-            nameKey="product_name"
-            valueKey="total_amount"
-            title="商品销售额分布"
-            formatValue={(val) => formatCurrency(val)}
-          />
-        )}
+          {categoryData && categoryData.length > 0 && (
+            <PieChartSVG
+              data={categoryData}
+              nameKey="category"
+              valueKey="total_amount"
+              title="商品品类营业额分布"
+              formatValue={(val) => formatCurrency(val)}
+            />
+          )}
+        </div>
       </div>
 
       {/* 全部商品表格 */}

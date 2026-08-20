@@ -438,6 +438,11 @@ tr:hover {
   height: 300px;
 }
 
+.pie-svg-large {
+  width: 450px;
+  height: 450px;
+}
+
 .pie-svg path {
   cursor: pointer;
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
@@ -457,6 +462,20 @@ tr:hover {
   display: flex;
   align-items: center;
   gap: 10px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.legend-item:hover,
+.legend-item-active {
+  background: #f0f5ff;
+}
+
+.legend-item-active .legend-label {
+  color: var(--primary);
+  font-weight: 500;
 }
 
 .legend-color {
@@ -469,4 +488,22 @@ tr:hover {
 .legend-label {
   font-size: 14px;
   color: var(--text);
+}
+
+/* 扇形图布局 */
+.pie-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.pie-left .chart-card {
+  height: 100%;
+}
+
+.pie-right {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
