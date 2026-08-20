@@ -270,7 +270,8 @@ function ChatBox() {
 
     try {
       const conversationHistory = buildConversationHistory();
-      const response = await fetch('/api/ai/chat/stream', {
+      const apiBase = import.meta.env.VITE_API_URL || '';
+      const response = await fetch(`${apiBase}/api/ai/chat/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
