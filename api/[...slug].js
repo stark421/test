@@ -23,6 +23,7 @@ module.exports = async (req, res) => {
   if (url.pathname === '/api/debug-info') {
     return res.status(200).json({
       loadError: loadError ? loadError.message : null,
+      loadStack: loadError ? loadError.stack : null,
       appType: typeof app,
       isFunction: typeof app === 'function',
       url: req.url,
