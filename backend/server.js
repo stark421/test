@@ -27,6 +27,48 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// 调试端点：检查数据文件是否可访问
+app.get('/api/debug', async (req, res) => {
+  const fs = require('fs');
+  const dataDir = path.join(__dirname, 'data');
+  const initDir = path.join(__dirname, 'db');
+  
+  const result = {
+    vercel: !!process.env.VERCEL,
+    cwd: process.cwd(),
+    dirname: __dirname,
+    dataDir,
+    dataDirExists: fs.existsSync(dataDir),
+    files: {},
+    dbInit: null
+  };
+  
+  try {
+    if (fs.existsSync(dataDir)) {
+      result.files = fs.readdirSync(dataDir).reduce((acc, f) => {
+        acc[f] = fs.statSync(path.join(dataDir, f)).size;
+        return acc;
+      }, {});
+    }
+  } catch (e) {
+    result.filesError = e.message;
+  }
+  
+  try {
+    const { getDb } = require('./db/connection');
+    const db = await getDb();
+    const count = db.exec('SELECT COUNT(*) as c FROM sales');
+    result.dbInit = 'ok';
+    result.rowCount = count[0]?.values[0]?.[0];
+  } catch (e) {
+    result.dbInit = 'failed';
+    result.dbError = e.message;
+    result.dbStack = e.stack;
+  }
+  
+  res.json(result);
+});
+
 // 前端路由回退（仅本地开发时使用）
 if (!process.env.VERCEL) {
   app.get('*', (req, res) => {
