@@ -38,11 +38,6 @@ module.exports = async (req, res) => {
     });
   }
 
-  // Ensure req.url has /api prefix for Express routing
-  if (!req.url.startsWith('/api')) {
-    req.url = '/api' + req.url;
-  }
-
   try {
     app(req, res);
   } catch (error) {
