@@ -43,12 +43,16 @@ async function initDatabase(options = {}) {
   const { inMemory = false } = options;
   console.log('正在初始化数据库...');
   
-  // Vercel 环境从 CDN 加载 WASM 文件
-  const SQL = await initSQL({
-    locateFile: process.env.VERCEL
-      ? () => 'https://sql.js.org/dist/sql-wasm.wasm'
-      : undefined
-  });
+  let SQL;
+  if (process.env.VERCEL) {
+    // Vercel 环境：从 CDN 获取 WASM 二进制
+    const wasmUrl = 'https://sql.js.org/dist/sql-wasm.wasm';
+    const response = await fetch(wasmUrl);
+    const wasmBuffer = await response.arrayBuffer();
+    SQL = await initSQL({ wasmBinary: wasmBuffer });
+  } else {
+    SQL = await initSQL();
+  }
   
   // 文件模式下清理旧数据库
   if (!inMemory && fs.existsSync(DB_PATH)) {
