@@ -18,6 +18,18 @@ module.exports = async (req, res) => {
     return res.status(200).end();
   }
 
+  // 调试信息
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  if (url.pathname === '/api/debug-info') {
+    return res.status(200).json({
+      loadError: loadError ? loadError.message : null,
+      appType: typeof app,
+      isFunction: typeof app === 'function',
+      url: req.url,
+      pathname: url.pathname
+    });
+  }
+
   if (loadError) {
     return res.status(500).json({
       success: false,
