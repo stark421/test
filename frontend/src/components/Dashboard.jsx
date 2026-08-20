@@ -223,7 +223,7 @@ function Dashboard({ dailyData, topProducts, paymentData, storeData, loading, fo
 
           {storeData && storeData.length > 0 && (
             <PieChartSVG
-              data={storeData}
+              data={storeData.map(d => ({ ...d, store_name: `${d.store_name} (${d.district})` }))}
               nameKey="store_name"
               valueKey="total_amount"
               title="门店营业额分布"

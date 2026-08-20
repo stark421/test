@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import dayjs from 'dayjs';
-import { getDailyStats, getSummaryStats, getTop10Products, getPaymentStats, getStoreStats } from './api';
+import { getDailyStats, getSummaryStats, getTop10Products, getPaymentStats, getStoreStats, getStores } from './api';
 import Dashboard from './components/Dashboard';
 import ChatBox from './components/ChatBox';
 
@@ -19,19 +19,34 @@ function App() {
   const [error, setError] = useState(null);
   const [filteredSummaryData, setFilteredSummaryData] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [storeList, setStoreList] = useState([]);
+  const [selectedStores, setSelectedStores] = useState([]);
+  const [storeDropdownOpen, setStoreDropdownOpen] = useState(false);
+  const storeSelectRef = useRef(null);
+
+  // 点击外部关闭门店下拉框
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (storeSelectRef.current && !storeSelectRef.current.contains(e.target)) {
+        setStoreDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // 获取数据（使用默认日期范围）
-  const fetchData = async (start = DEFAULT_START_DATE, end = DEFAULT_END_DATE) => {
+  const fetchData = async (start = DEFAULT_START_DATE, end = DEFAULT_END_DATE, stores = []) => {
     setLoading(true);
     setError(null);
     
     try {
       const [summaryRes, dailyRes, topRes, paymentRes, storeRes] = await Promise.all([
-        getSummaryStats(start, end),
-        getDailyStats(start, end),
-        getTop10Products(start, end),
-        getPaymentStats(start, end),
-        getStoreStats(start, end)
+        getSummaryStats(start, end, stores),
+        getDailyStats(start, end, stores),
+        getTop10Products(start, end, stores),
+        getPaymentStats(start, end, stores),
+        getStoreStats(start, end, stores)
       ]);
 
       if (summaryRes.success) setSummaryData(summaryRes.data);
@@ -49,6 +64,9 @@ function App() {
 
   useEffect(() => {
     fetchData();
+    getStores().then(res => {
+      if (res.success) setStoreList(res.data);
+    });
   }, []);
 
   const handleSearch = async () => {
@@ -58,11 +76,11 @@ function App() {
     
     try {
       const [summaryRes, dailyRes, topRes, paymentRes, storeRes] = await Promise.all([
-        getSummaryStats(startDate, endDate),
-        getDailyStats(startDate, endDate),
-        getTop10Products(startDate, endDate),
-        getPaymentStats(startDate, endDate),
-        getStoreStats(startDate, endDate)
+        getSummaryStats(startDate, endDate, selectedStores),
+        getDailyStats(startDate, endDate, selectedStores),
+        getTop10Products(startDate, endDate, selectedStores),
+        getPaymentStats(startDate, endDate, selectedStores),
+        getStoreStats(startDate, endDate, selectedStores)
       ]);
 
       if (summaryRes.success) setFilteredSummaryData(summaryRes.data);
@@ -83,6 +101,7 @@ function App() {
     setEndDate(DEFAULT_END_DATE);
     setFilteredSummaryData(null);
     setHasSearched(false);
+    setSelectedStores([]);
     fetchData();
   };
 
@@ -138,6 +157,33 @@ function App() {
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
           />
+          <label>门店：</label>
+          <div className="multi-select" ref={storeSelectRef}>
+            <div className="multi-select-display" onClick={() => setStoreDropdownOpen(prev => !prev)}>
+              {selectedStores.length === 0
+                ? '全部门店'
+                : `已选 ${selectedStores.length} 家`}
+              <span className="multi-select-arrow">▾</span>
+            </div>
+            <div className={`multi-select-dropdown${storeDropdownOpen ? ' open' : ''}`}>
+              {storeList.map(store => (
+                <label key={store.store_id} className="multi-select-option">
+                  <input
+                    type="checkbox"
+                    checked={selectedStores.includes(store.store_id)}
+                    onChange={() => {
+                      setSelectedStores(prev =>
+                        prev.includes(store.store_id)
+                          ? prev.filter(id => id !== store.store_id)
+                          : [...prev, store.store_id]
+                      );
+                    }}
+                  />
+                  {store.store_name} ({store.district})
+                </label>
+              ))}
+            </div>
+          </div>
           <button onClick={handleSearch}>查询</button>
           <button onClick={handleClearFilter} className="clear-btn">清空筛选</button>
         </div>

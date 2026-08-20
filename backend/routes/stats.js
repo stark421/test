@@ -27,6 +27,13 @@ router.get('/daily', async (req, res) => {
       conditions.push('date <= ?');
       params.push(end);
     }
+    if (req.query.stores) {
+      const storeIds = req.query.stores.split(',').filter(Boolean);
+      if (storeIds.length > 0) {
+        conditions.push(`store_id IN (${storeIds.map(() => '?').join(',')})`);
+        params.push(...storeIds);
+      }
+    }
     
     if (conditions.length > 0) {
       sql += ' WHERE ' + conditions.join(' AND ');
@@ -75,6 +82,13 @@ router.get('/summary', async (req, res) => {
     if (end) {
       conditions.push('date <= ?');
       params.push(end);
+    }
+    if (req.query.stores) {
+      const storeIds = req.query.stores.split(',').filter(Boolean);
+      if (storeIds.length > 0) {
+        conditions.push(`store_id IN (${storeIds.map(() => '?').join(',')})`);
+        params.push(...storeIds);
+      }
     }
     
     if (conditions.length > 0) {
@@ -127,6 +141,13 @@ router.get('/stores', async (req, res) => {
       conditions.push('s.date <= ?');
       params.push(end);
     }
+    if (req.query.stores) {
+      const storeIds = req.query.stores.split(',').filter(Boolean);
+      if (storeIds.length > 0) {
+        conditions.push(`s.store_id IN (${storeIds.map(() => '?').join(',')})`);
+        params.push(...storeIds);
+      }
+    }
     
     if (conditions.length > 0) {
       sql += ' WHERE ' + conditions.join(' AND ');
@@ -174,6 +195,13 @@ router.get('/products/top10', async (req, res) => {
     if (end) {
       conditions.push('s.date <= ?');
       params.push(end);
+    }
+    if (req.query.stores) {
+      const storeIds = req.query.stores.split(',').filter(Boolean);
+      if (storeIds.length > 0) {
+        conditions.push(`s.store_id IN (${storeIds.map(() => '?').join(',')})`);
+        params.push(...storeIds);
+      }
     }
     
     if (conditions.length > 0) {
@@ -239,6 +267,13 @@ router.get('/payment', async (req, res) => {
     if (end) {
       conditions.push('date <= ?');
       params.push(end);
+    }
+    if (req.query.stores) {
+      const storeIds = req.query.stores.split(',').filter(Boolean);
+      if (storeIds.length > 0) {
+        conditions.push(`store_id IN (${storeIds.map(() => '?').join(',')})`);
+        params.push(...storeIds);
+      }
     }
     
     if (conditions.length > 0) {
