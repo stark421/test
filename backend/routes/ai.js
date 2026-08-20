@@ -75,15 +75,29 @@ ${DB_SCHEMA}
 - 金额单位为元
 - SQL 必须语法正确`;
 
-// 调用大模型生成 SQL
-async function generateSQLWithAI(question) {
+// 调用大模型生成 SQL（支持对话上下文）
+async function generateSQLWithAI(question, conversationHistory = []) {
   try {
+    // 构建消息数组，包含系统提示和对话历史
+    const messages = [
+      { role: 'system', content: SYSTEM_PROMPT }
+    ];
+    
+    // 添加对话历史（最多保留最近5轮对话）
+    const recentHistory = conversationHistory.slice(-5);
+    for (const msg of recentHistory) {
+      messages.push({
+        role: msg.role,
+        content: msg.content
+      });
+    }
+    
+    // 添加当前问题
+    messages.push({ role: 'user', content: question });
+    
     const completion = await openai.chat.completions.create({
       model: MODEL,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: question }
-      ],
+      messages: messages,
       temperature: 0.1, // 低温度，确保输出稳定
       max_tokens: 500
     });
@@ -140,7 +154,8 @@ ${JSON.stringify(queryResult, null, 2)}
 1. 直接回答问题，不要重复问题本身
 2. 如果是排名类数据，用列表格式展示
 3. 金额保留两位小数，使用千分位格式
-4. 回答要专业、准确、简洁`;
+4. 回答要专业、准确、简洁
+5. 如果数据是时间序列（如各月数据），请按时间顺序列出趋势`;
 
     const completion = await openai.chat.completions.create({
       model: MODEL,
@@ -155,19 +170,147 @@ ${JSON.stringify(queryResult, null, 2)}
       max_tokens: 800
     });
 
-    return completion.choices[0].message.content;
+    const answer = completion.choices[0].message.content;
+    console.log('AI格式化回答:', answer);
+    
+    // 确保返回有效的字符串
+    if (!answer || answer.trim().length === 0) {
+      console.error('AI返回空回答，使用降级处理');
+      return formatFallbackAnswer(queryResult, sqlDescription);
+    }
+    
+    return answer;
   } catch (error) {
     console.error('格式化回答失败:', error);
-    // 降级处理：返回原始数据
-    return `查询结果：\n${JSON.stringify(queryResult, null, 2)}`;
+    // 降级处理：返回格式化的原始数据
+    return formatFallbackAnswer(queryResult, sqlDescription);
   }
+}
+
+// 流式格式化查询结果
+async function formatAnswerWithAIStream(question, queryResult, sqlDescription, res) {
+  if (!queryResult || queryResult.length === 0) {
+    res.write(`data: ${JSON.stringify({ type: 'content', content: '根据查询，没有找到符合条件的数据。' })}\n\n`);
+    res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+    return;
+  }
+
+  try {
+    const formatPrompt = `用户问题：${question}
+    
+查询说明：${sqlDescription}
+
+查询结果数据：
+${JSON.stringify(queryResult, null, 2)}
+
+请根据以上信息，用简洁自然的中文回答用户的问题。要求：
+1. 直接回答问题，不要重复问题本身
+2. 如果是排名类数据，用列表格式展示
+3. 金额保留两位小数，使用千分位格式
+4. 回答要专业、准确、简洁
+5. 如果数据是时间序列（如各月数据），请按时间顺序列出趋势`;
+
+    const stream = await openai.chat.completions.create({
+      model: MODEL,
+      messages: [
+        { 
+          role: 'system', 
+          content: '你是一个数据分析助手，请根据查询结果用简洁的中文回答用户问题。只返回回答内容，不要有其他格式。' 
+        },
+        { role: 'user', content: formatPrompt }
+      ],
+      temperature: 0.3,
+      max_tokens: 2000,
+      stream: true
+    });
+
+    let fullContent = '';
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content || '';
+      if (content) {
+        fullContent += content;
+        res.write(`data: ${JSON.stringify({ type: 'content', content })}\n\n`);
+      }
+    }
+    
+    console.log('AI流式回答完成:', fullContent);
+    
+    // 如果流式输出为空，使用降级处理
+    if (!fullContent || fullContent.trim().length === 0) {
+      const fallbackAnswer = formatFallbackAnswer(queryResult, sqlDescription);
+      res.write(`data: ${JSON.stringify({ type: 'content', content: fallbackAnswer })}\n\n`);
+    }
+    
+    res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+  } catch (error) {
+    console.error('流式格式化回答失败:', error);
+    // 降级处理
+    const fallbackAnswer = formatFallbackAnswer(queryResult, sqlDescription);
+    res.write(`data: ${JSON.stringify({ type: 'content', content: fallbackAnswer })}\n\n`);
+    res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+  }
+}
+
+// 降级回答格式化
+function formatFallbackAnswer(queryResult, sqlDescription) {
+  if (!queryResult || queryResult.length === 0) {
+    return '根据查询，没有找到符合条件的数据。';
+  }
+  
+  // 如果只有一行一列，直接返回值
+  if (queryResult.length === 1) {
+    const keys = Object.keys(queryResult[0]);
+    if (keys.length === 1) {
+      const value = queryResult[0][keys[0]];
+      return `${sqlDescription}：${typeof value === 'number' ? value.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : value}`;
+    }
+  }
+  
+  // 多行数据，格式化为列表
+  let result = `${sqlDescription}：\n`;
+  queryResult.forEach((row, index) => {
+    const values = Object.values(row);
+    const formattedValues = values.map(v => 
+      typeof v === 'number' ? v.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : v
+    );
+    result += `${index + 1}. ${formattedValues.join(' - ')}\n`;
+  });
+  
+  return result;
 }
 
 // 检测是否是问候语
 function isGreeting(text) {
-  const greetings = ['你好', '您好', 'hi', 'hello', '嗨', 'hey', '早上好', '下午好', '晚上好', '在吗'];
+  const greetings = ['你好', '您好', 'hi', 'hello', '嗨', 'hey', '早上好', '下午好', '晚上好', '在吗', '你是谁', '你是'];
   const lowerText = text.toLowerCase().trim();
-  return greetings.some(g => lowerText.includes(g)) || lowerText.length <= 2;
+  //精确匹配问候语，不再使用 length <= 2的宽泛判断
+  return greetings.some(g => lowerText === g || lowerText.startsWith(g + ' ') || lowerText.endsWith(' ' + g));
+}
+
+// SQL安全校验 - 只允许SELECT语句
+function validateSQL(sql) {
+  if (!sql || typeof sql !== 'string') {
+    return { valid: false, error: 'SQL语句为空' };
+  }
+  
+  const trimmedSQL = sql.trim().toUpperCase();
+  
+  // 检查是否以SELECT开头
+  if (!trimmedSQL.startsWith('SELECT')) {
+    return { valid: false, error: '只允许SELECT查询语句' };
+  }
+  
+  // 检查是否包含危险关键词
+  const dangerousKeywords = ['INSERT', 'UPDATE', 'DELETE', 'DROP', 'ALTER', 'CREATE', 'TRUNCATE', 'EXEC', 'EXECUTE', 'UNION', 'INTO', 'OUTFILE', 'DUMPFILE'];
+  for (const keyword of dangerousKeywords) {
+    // 使用单词边界匹配，避免误匹配（如SELECT中的"LECT"）
+    const regex = new RegExp(`\\b${keyword}\\b`, 'i');
+    if (regex.test(sql)) {
+      return { valid: false, error: `SQL语句包含不允许的关键词: ${keyword}` };
+    }
+  }
+  
+  return { valid: true };
 }
 
 // 问候语欢迎消息
@@ -176,14 +319,16 @@ const WELCOME_MESSAGE = '您好！我是 Moneki 连锁餐饮公司的数据分�
 // POST /api/ai/chat - 处理 AI 问答
 router.post('/chat', async (req, res) => {
   try {
-    const { question } = req.body;
+    const { question, conversationHistory = [] } = req.body;
     
-    if (!question) {
-      return res.status(400).json({ success: false, error: '请输入问题' });
+    if (!question || typeof question !== 'string' || question.trim().length === 0) {
+      return res.status(400).json({ success: false, error: '请输入有效的问题' });
     }
     
+    const trimmedQuestion = question.trim();
+    
     // 检测问候语，直接返回欢迎消息
-    if (isGreeting(question)) {
+    if (isGreeting(trimmedQuestion)) {
       return res.json({
         success: true,
         data: {
@@ -194,8 +339,8 @@ router.post('/chat', async (req, res) => {
       });
     }
     
-    // 使用大模型生成 SQL
-    const aiResult = await generateSQLWithAI(question);
+    // 使用大模型生成 SQL（传入对话上下文）
+    const aiResult = await generateSQLWithAI(trimmedQuestion, conversationHistory);
     
     if (!aiResult.is_data_question || !aiResult.sql) {
       return res.json({
@@ -208,11 +353,43 @@ router.post('/chat', async (req, res) => {
       });
     }
     
+    // SQL安全校验
+    const sqlValidation = validateSQL(aiResult.sql);
+    if (!sqlValidation.valid) {
+      console.error('SQL安全校验失败:', sqlValidation.error, 'SQL:', aiResult.sql);
+      return res.json({
+        success: true,
+        data: {
+          answer: '抱歉，生成的查询语句不安全，请尝试换个方式提问。',
+          sql: null,
+          data: null
+        }
+      });
+    }
+    
     // 执行查询
-    const results = await query(aiResult.sql);
+    let results;
+    try {
+      results = await query(aiResult.sql);
+    } catch (sqlError) {
+      console.error('SQL执行失败:', sqlError.message, 'SQL:', aiResult.sql);
+      return res.json({
+        success: true,
+        data: {
+          answer: '抱歉，查询执行失败，请尝试换个方式提问。',
+          sql: aiResult.sql,
+          desc: aiResult.description,
+          data: null
+        }
+      });
+    }
     
     // 使用大模型格式化回答
-    const answer = await formatAnswerWithAI(question, results, aiResult.description);
+    const answer = await formatAnswerWithAI(trimmedQuestion, results, aiResult.description);
+    
+    console.log('AI回答:', answer);
+    console.log('SQL:', aiResult.sql);
+    console.log('描述:', aiResult.description);
     
     res.json({
       success: true,
@@ -225,10 +402,123 @@ router.post('/chat', async (req, res) => {
     });
   } catch (error) {
     console.error('AI 问答处理失败：', error);
+    
+    // 区分不同类型的错误
+    let errorMessage = '处理问题时出错，请稍后重试';
+    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+      errorMessage = 'AI服务响应超时，请稍后重试';
+    } else if (error.status === 429 || error.message?.includes('rate limit')) {
+      errorMessage = 'AI服务请求过于频繁，请稍后重试';
+    } else if (error.status === 401 || error.message?.includes('unauthorized')) {
+      errorMessage = 'AI服务认证失败，请检查配置';
+    }
+    
     res.status(500).json({ 
       success: false, 
-      error: '处理问题时出错，请稍后重试' 
+      error: errorMessage
     });
+  }
+});
+
+// POST /api/ai/chat/stream - 流式处理 AI 问答
+router.post('/chat/stream', async (req, res) => {
+  try {
+    const { question, conversationHistory = [] } = req.body;
+    
+    if (!question || typeof question !== 'string' || question.trim().length === 0) {
+      return res.status(400).json({ success: false, error: '请输入有效的问题' });
+    }
+    
+    const trimmedQuestion = question.trim();
+    
+    // 设置SSE响应头
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+    
+    // 检测问候语，直接返回欢迎消息
+    if (isGreeting(trimmedQuestion)) {
+      // 流式发送欢迎消息
+      const welcomeChunks = WELCOME_MESSAGE.split('\n');
+      for (const chunk of welcomeChunks) {
+        res.write(`data: ${JSON.stringify({ type: 'content', content: chunk + '\n' })}\n\n`);
+      }
+      res.write(`data: ${JSON.stringify({ type: 'done', sql: null, desc: null })}\n\n`);
+      res.end();
+      return;
+    }
+    
+    // 发送思考状态
+    res.write(`data: ${JSON.stringify({ type: 'status', status: 'thinking', message: '正在分析问题...' })}\n\n`);
+    
+    // 使用大模型生成 SQL（传入对话上下文）
+    res.write(`data: ${JSON.stringify({ type: 'status', status: 'generating_sql', message: '正在生成查询语句...' })}\n\n`);
+    const aiResult = await generateSQLWithAI(trimmedQuestion, conversationHistory);
+    
+    if (!aiResult.is_data_question || !aiResult.sql) {
+      // 流式发送非数据问题的回答
+      const descChunks = aiResult.description.split('\n');
+      for (const chunk of descChunks) {
+        res.write(`data: ${JSON.stringify({ type: 'content', content: chunk + '\n' })}\n\n`);
+      }
+      res.write(`data: ${JSON.stringify({ type: 'done', sql: null, desc: null })}\n\n`);
+      res.end();
+      return;
+    }
+    
+    // SQL安全校验
+    const sqlValidation = validateSQL(aiResult.sql);
+    if (!sqlValidation.valid) {
+      console.error('SQL安全校验失败:', sqlValidation.error, 'SQL:', aiResult.sql);
+      res.write(`data: ${JSON.stringify({ type: 'content', content: '抱歉，生成的查询语句不安全，请尝试换个方式提问。' })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: 'done', sql: null, desc: null })}\n\n`);
+      res.end();
+      return;
+    }
+    
+    // 发送SQL和描述信息
+    res.write(`data: ${JSON.stringify({ type: 'sql', sql: aiResult.sql, desc: aiResult.description })}\n\n`);
+    
+    // 执行查询
+    res.write(`data: ${JSON.stringify({ type: 'status', status: 'executing_query', message: '正在执行数据查询...' })}\n\n`);
+    let results;
+    try {
+      results = await query(aiResult.sql);
+      res.write(`data: ${JSON.stringify({ type: 'status', status: 'query_done', message: `查询完成，获取到 ${results.length} 条数据` })}\n\n`);
+    } catch (sqlError) {
+      console.error('SQL执行失败:', sqlError.message, 'SQL:', aiResult.sql);
+      res.write(`data: ${JSON.stringify({ type: 'content', content: '抱歉，查询执行失败，请尝试换个方式提问。' })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: 'done', sql: aiResult.sql, desc: aiResult.description })}\n\n`);
+      res.end();
+      return;
+    }
+    
+    // 流式格式化回答
+    res.write(`data: ${JSON.stringify({ type: 'status', status: 'generating_answer', message: '正在生成回答...' })}\n\n`);
+    await formatAnswerWithAIStream(trimmedQuestion, results, aiResult.description, res);
+    
+    res.end();
+  } catch (error) {
+    console.error('AI 流式问答处理失败：', error);
+    
+    // 区分不同类型的错误
+    let errorMessage = '处理问题时出错，请稍后重试';
+    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+      errorMessage = 'AI服务响应超时，请稍后重试';
+    } else if (error.status === 429 || error.message?.includes('rate limit')) {
+      errorMessage = 'AI服务请求过于频繁，请稍后重试';
+    } else if (error.status === 401 || error.message?.includes('unauthorized')) {
+      errorMessage = 'AI服务认证失败，请检查配置';
+    }
+    
+    // 如果响应头已发送，通过SSE发送错误
+    if (res.headersSent) {
+      res.write(`data: ${JSON.stringify({ type: 'error', content: errorMessage })}\n\n`);
+      res.end();
+    } else {
+      res.status(500).json({ success: false, error: errorMessage });
+    }
   }
 });
 

@@ -447,6 +447,43 @@ tr:hover {
   40% { opacity: 1; }
 }
 
+/* 流式输出光标 */
+.streaming-cursor {
+  display: inline-block;
+  animation: blink 1s infinite;
+  color: var(--primary);
+  font-weight: bold;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* 思考状态 */
+.thinking-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.thinking-icon {
+  font-size: 16px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.thinking-text {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-style: italic;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.1); }
+}
+
 .chatbox-input {
   display: flex;
   padding: 16px;
