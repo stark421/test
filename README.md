@@ -44,6 +44,10 @@ moneki-fullstack-assignment/
 │   │   ├── init.js            # 数据库初始化脚本
 │   │   ├── connection.js      # 数据库连接工具
 │   │   └── moneki.db          # SQLite 数据库文件
+│   ├── data/                  # 原始数据
+│   │   ├── sales.csv
+│   │   ├── stores.csv
+│   │   └── products.csv
 │   ├── routes/
 │   │   ├── stats.js           # 统计数据 API
 │   │   └── ai.js              # AI 问答 API
@@ -58,10 +62,6 @@ moneki-fullstack-assignment/
 │   │   └── api/
 │   │       └── index.js       # API 调用封装
 │   └── package.json
-├── data/                       # 原始数据
-│   ├── sales.csv
-│   ├── stores.csv
-│   └── products.csv
 └── README.md
 ```
 

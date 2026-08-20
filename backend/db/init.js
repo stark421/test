@@ -4,7 +4,7 @@ const fs = require('fs');
 const { cleanSalesData, readStores, readProducts } = require('../utils/dataCleaner');
 
 const DB_PATH = path.join(__dirname, 'moneki.db');
-const DATA_DIR = path.join(__dirname, '../../data');
+const DATA_DIR = path.join(__dirname, '../data');
 
 // 创建数据库表
 const CREATE_TABLES_SQL = `
