@@ -3,11 +3,17 @@ const router = express.Router();
 const { query, queryOne } = require('../db/connection');
 const OpenAI = require('openai');
 
-// 初始化 OpenAI 客户端（兼容 MiMo API）
-const openai = new OpenAI({
-  apiKey: process.env.MIMO_API_KEY,
-  baseURL: process.env.MIMO_BASE_URL || 'https://api.xiaomimimo.com/v1'
-});
+// 懒加载 OpenAI 客户端（避免缺 API Key 时模块加载崩溃）
+let openai = null;
+function getOpenAI() {
+  if (!openai) {
+    openai = new OpenAI({
+      apiKey: process.env.MIMO_API_KEY,
+      baseURL: process.env.MIMO_BASE_URL || 'https://api.xiaomimimo.com/v1'
+    });
+  }
+  return openai;
+}
 
 const MODEL = process.env.MIMO_MODEL || 'mimo-v2.5-pro';
 
@@ -95,7 +101,7 @@ async function generateSQLWithAI(question, conversationHistory = []) {
     // 添加当前问题
     messages.push({ role: 'user', content: question });
     
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: MODEL,
       messages: messages,
       temperature: 0.1, // 低温度，确保输出稳定
@@ -157,7 +163,7 @@ ${JSON.stringify(queryResult, null, 2)}
 4. 回答要专业、准确、简洁
 5. 如果数据是时间序列（如各月数据），请按时间顺序列出趋势`;
 
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: MODEL,
       messages: [
         { 
@@ -210,7 +216,7 @@ ${JSON.stringify(queryResult, null, 2)}
 4. 回答要专业、准确、简洁
 5. 如果数据是时间序列（如各月数据），请按时间顺序列出趋势`;
 
-    const stream = await openai.chat.completions.create({
+    const stream = await getOpenAI().chat.completions.create({
       model: MODEL,
       messages: [
         { 
