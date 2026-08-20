@@ -39,13 +39,14 @@ const CREATE_TABLES_SQL = `
   CREATE INDEX IF NOT EXISTS idx_sales_product ON sales(product_id);
 `;
 
-async function initDatabase() {
+async function initDatabase(options = {}) {
+  const { inMemory = false } = options;
   console.log('正在初始化数据库...');
   
   const SQL = await initSQL();
   
-  // 如果数据库文件存在则删除重建
-  if (fs.existsSync(DB_PATH)) {
+  // 文件模式下清理旧数据库
+  if (!inMemory && fs.existsSync(DB_PATH)) {
     fs.unlinkSync(DB_PATH);
     console.log('已删除旧数据库');
   }
@@ -86,6 +87,11 @@ async function initDatabase() {
   });
   insertSale.free();
   console.log(`销售数据导入完成：${sales.length} 条`);
+
+  if (inMemory) {
+    console.log('数据库已在内存中初始化完成');
+    return db;
+  }
 
   // 保存数据库文件
   const data = db.export();

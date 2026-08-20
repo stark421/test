@@ -13,8 +13,10 @@ const PORT = process.env.PORT || 3002;
 app.use(cors());
 app.use(express.json());
 
-// 静态文件服务（前端构建产物）
-app.use(express.static(path.join(__dirname, '../frontend/dist')));
+// 静态文件服务（仅本地开发时使用，Vercel 由 CDN 处理）
+if (!process.env.VERCEL) {
+  app.use(express.static(path.join(__dirname, '../frontend/dist')));
+}
 
 // API 路由
 app.use('/api/stats', statsRoutes);
@@ -25,12 +27,14 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// 前端路由回退
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
-});
+// 前端路由回退（仅本地开发时使用）
+if (!process.env.VERCEL) {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+  });
+}
 
-// 启动服务器
+// 启动服务器（本地开发）
 async function start() {
   try {
     // 初始化数据库
@@ -46,4 +50,10 @@ async function start() {
   }
 }
 
-start();
+// 本地开发时直接启动
+if (!process.env.VERCEL) {
+  start();
+}
+
+// 导出 app 供 Vercel 使用
+module.exports = app;
