@@ -1,18 +1,6 @@
 // Vercel Serverless Function 入口
-// 使用 handler 模式而非直接导出 Express app，确保所有错误都能被捕获并返回 CORS 头
-
-let app;
-let loadError;
-
-try {
-  app = require('../backend/server');
-} catch (error) {
-  console.error('Server module load failed:', error);
-  loadError = error;
-}
-
 module.exports = async (req, res) => {
-  // 手动设置 CORS 头，确保即使出错也有
+  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -21,21 +9,38 @@ module.exports = async (req, res) => {
     return res.status(200).end();
   }
 
-  if (loadError) {
+  // 解析 URL
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const pathname = url.pathname;
+
+  // 健康检查（不加载后端）
+  if (pathname === '/api/health') {
+    return res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  }
+
+  // 尝试加载后端
+  let app;
+  try {
+    app = require('../backend/server');
+  } catch (error) {
+    console.error('Server load error:', error);
     return res.status(500).json({
       success: false,
-      error: 'Server init failed: ' + loadError.message
+      error: 'Server load failed: ' + error.message,
+      stack: error.stack
     });
   }
 
+  // 尝试处理请求
   try {
     app(req, res);
   } catch (error) {
-    console.error('Request handler error:', error);
+    console.error('Request error:', error);
     if (!res.headersSent) {
       res.status(500).json({
         success: false,
-        error: error.message
+        error: 'Request failed: ' + error.message,
+        stack: error.stack
       });
     }
   }
