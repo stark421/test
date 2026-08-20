@@ -1,12 +1,3 @@
 {
-  "version": 2,
-  "functions": {
-    "api/**/*.js": {
-      "includeFiles": "backend/data/**"
-    }
-  },
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/(.*)", "dest": "/public/$1" }
-  ]
+  "version": 2
 }
