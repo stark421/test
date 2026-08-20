@@ -1,6 +1,97 @@
+import { useState, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-function Dashboard({ dailyData, summaryData, topProducts, loading, formatCurrency, formatNumber }) {
+const COLORS = ['#1890ff', '#52c41a', '#faad14', '#f5222d', '#722ed1', '#13c2c2', '#eb2f96', '#a0d911'];
+
+function PieChartSVG({ data, nameKey, valueKey, title, formatValue }) {
+  const [hoveredIndex, setHoveredIndex] = useState(null);
+
+  const getArcPath = (cx, cy, r, startAngle, endAngle) => {
+    const startRad = ((startAngle - 90) * Math.PI) / 180;
+    const endRad = ((endAngle - 90) * Math.PI) / 180;
+    const x1 = cx + r * Math.cos(startRad);
+    const y1 = cy + r * Math.sin(startRad);
+    const x2 = cx + r * Math.cos(endRad);
+    const y2 = cy + r * Math.sin(endRad);
+    const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+    return `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+  };
+
+  const total = data.reduce((sum, item) => sum + item[valueKey], 0);
+
+  const slices = useMemo(() => {
+    let currentAngle = 0;
+    return data.map((item, index) => {
+      const angle = (item[valueKey] / total) * 360;
+      const slice = {
+        ...item,
+        startAngle: currentAngle,
+        endAngle: currentAngle + angle,
+        color: COLORS[index % COLORS.length],
+      };
+      currentAngle += angle;
+      return slice;
+    });
+  }, [data, total, valueKey]);
+
+  return (
+    <div className="chart-card">
+      <h3>{title}</h3>
+      <div className="pie-chart-container">
+        <svg viewBox="0 0 300 300" className="pie-svg">
+          {slices.map((slice, i) => {
+            const r = hoveredIndex === i ? 110 : 100;
+            const path = getArcPath(150, 150, r, slice.startAngle, slice.endAngle);
+            return (
+              <path
+                key={slice[nameKey]}
+                d={path}
+                fill={slice.color}
+                stroke="#fff"
+                strokeWidth="2"
+                style={{ transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)', transformOrigin: '150px 150px' }}
+                onMouseEnter={() => setHoveredIndex(i)}
+                onMouseLeave={() => setHoveredIndex(null)}
+              />
+            );
+          })}
+          {hoveredIndex !== null && (
+            <>
+              <text x="150" y="280" textAnchor="middle" fill="#333" fontSize="14" fontWeight="bold">
+                {slices[hoveredIndex][nameKey]}
+              </text>
+              <text x="150" y="300" textAnchor="middle" fill="#666" fontSize="12">
+                {formatValue ? formatValue(slices[hoveredIndex][valueKey], slices[hoveredIndex]) : slices[hoveredIndex][valueKey]}
+                {' '}({((slices[hoveredIndex][valueKey] / total) * 100).toFixed(1)}%)
+              </text>
+            </>
+          )}
+        </svg>
+        <div className="pie-legend">
+          {slices.map((slice) => (
+            <div key={slice[nameKey]} className="legend-item">
+              <span className="legend-color" style={{ background: slice.color }}></span>
+              <span className="legend-label">{slice[nameKey]}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Dashboard({ dailyData, summaryData, topProducts, paymentData, storeData, loading, formatCurrency, formatNumber }) {
+  const categoryData = useMemo(() => {
+    const map = {};
+    topProducts.forEach((p) => {
+      if (!map[p.product_category]) {
+        map[p.product_category] = { category: p.product_category, total_amount: 0 };
+      }
+      map[p.product_category].total_amount += p.total_amount;
+    });
+    return Object.values(map).sort((a, b) => b.total_amount - a.total_amount);
+  }, [topProducts]);
+
   if (loading) {
     return <div className="loading">加载中...</div>;
   }
@@ -36,20 +127,20 @@ function Dashboard({ dailyData, summaryData, topProducts, loading, formatCurrenc
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={dailyData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="date" 
+              <XAxis
+                dataKey="date"
                 tick={{ fontSize: 12 }}
                 tickFormatter={(value) => value.slice(5)}
               />
               <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip 
+              <Tooltip
                 formatter={(value) => [formatCurrency(value), '营业额']}
                 labelFormatter={(label) => `日期：${label}`}
               />
-              <Line 
-                type="monotone" 
-                dataKey="totalAmount" 
-                stroke="#1890ff" 
+              <Line
+                type="monotone"
+                dataKey="totalAmount"
+                stroke="#1890ff"
                 strokeWidth={2}
                 dot={{ r: 3 }}
                 activeDot={{ r: 5 }}
@@ -63,20 +154,20 @@ function Dashboard({ dailyData, summaryData, topProducts, loading, formatCurrenc
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={dailyData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="date" 
+              <XAxis
+                dataKey="date"
                 tick={{ fontSize: 12 }}
                 tickFormatter={(value) => value.slice(5)}
               />
               <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip 
+              <Tooltip
                 formatter={(value) => [formatNumber(value), '订单数']}
                 labelFormatter={(label) => `日期：${label}`}
               />
-              <Line 
-                type="monotone" 
-                dataKey="orderCount" 
-                stroke="#52c41a" 
+              <Line
+                type="monotone"
+                dataKey="orderCount"
+                stroke="#52c41a"
                 strokeWidth={2}
                 dot={{ r: 3 }}
                 activeDot={{ r: 5 }}
@@ -86,9 +177,54 @@ function Dashboard({ dailyData, summaryData, topProducts, loading, formatCurrenc
         </div>
       </div>
 
-      {/* Top10 商品表格 */}
+      {/* 扇形图区域 */}
+      <div className="charts-grid">
+        {paymentData && paymentData.length > 0 && (
+          <PieChartSVG
+            data={paymentData}
+            nameKey="payment"
+            valueKey="order_count"
+            title="支付方式分布"
+            formatValue={(val) => `${val} 单`}
+          />
+        )}
+
+        {storeData && storeData.length > 0 && (
+          <PieChartSVG
+            data={storeData}
+            nameKey="store_name"
+            valueKey="total_amount"
+            title="门店营业额分布"
+            formatValue={(val) => formatCurrency(val)}
+          />
+        )}
+      </div>
+
+      <div className="charts-grid">
+        {categoryData && categoryData.length > 0 && (
+          <PieChartSVG
+            data={categoryData}
+            nameKey="category"
+            valueKey="total_amount"
+            title="商品品类营业额分布"
+            formatValue={(val) => formatCurrency(val)}
+          />
+        )}
+
+        {topProducts && topProducts.length > 0 && (
+          <PieChartSVG
+            data={topProducts}
+            nameKey="product_name"
+            valueKey="total_amount"
+            title="商品销售额分布"
+            formatValue={(val) => formatCurrency(val)}
+          />
+        )}
+      </div>
+
+      {/* 全部商品表格 */}
       <div className="table-card">
-        <h3>Top 10 商品（按营业额）</h3>
+        <h3>全部商品（按营业额）</h3>
         <table>
           <thead>
             <tr>

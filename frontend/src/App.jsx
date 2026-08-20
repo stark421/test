@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import dayjs from 'dayjs';
-import { getDailyStats, getSummaryStats, getTop10Products } from './api';
+import { getDailyStats, getSummaryStats, getTop10Products, getPaymentStats, getStoreStats } from './api';
 import Dashboard from './components/Dashboard';
 import ChatBox from './components/ChatBox';
 
@@ -10,6 +10,8 @@ function App() {
   const [dailyData, setDailyData] = useState([]);
   const [summaryData, setSummaryData] = useState(null);
   const [topProducts, setTopProducts] = useState([]);
+  const [paymentData, setPaymentData] = useState([]);
+  const [storeData, setStoreData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -18,15 +20,19 @@ function App() {
     setError(null);
     
     try {
-      const [dailyRes, summaryRes, topRes] = await Promise.all([
+      const [dailyRes, summaryRes, topRes, paymentRes, storeRes] = await Promise.all([
         getDailyStats(startDate, endDate),
         getSummaryStats(startDate, endDate),
-        getTop10Products(startDate, endDate)
+        getTop10Products(startDate, endDate),
+        getPaymentStats(startDate, endDate),
+        getStoreStats(startDate, endDate)
       ]);
 
       if (dailyRes.success) setDailyData(dailyRes.data);
       if (summaryRes.success) setSummaryData(summaryRes.data);
       if (topRes.success) setTopProducts(topRes.data);
+      if (paymentRes.success) setPaymentData(paymentRes.data);
+      if (storeRes.success) setStoreData(storeRes.data);
     } catch (err) {
       console.error('获取数据失败：', err);
       setError('获取数据失败，请检查网络连接');
@@ -81,6 +87,8 @@ function App() {
           dailyData={dailyData}
           summaryData={summaryData}
           topProducts={topProducts}
+          paymentData={paymentData}
+          storeData={storeData}
           loading={loading}
           formatCurrency={formatCurrency}
           formatNumber={formatNumber}

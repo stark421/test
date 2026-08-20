@@ -146,7 +146,7 @@ router.get('/stores', async (req, res) => {
   }
 });
 
-// GET /api/products/top10 - Top10 商品
+// GET /api/products/top10 - 全部商品统计
 router.get('/products/top10', async (req, res) => {
   try {
     const { start, end } = req.query;
@@ -180,7 +180,7 @@ router.get('/products/top10', async (req, res) => {
       sql += ' WHERE ' + conditions.join(' AND ');
     }
     
-    sql += ' GROUP BY p.product_id ORDER BY total_amount DESC LIMIT 10';
+    sql += ' GROUP BY p.product_id ORDER BY total_amount DESC';
     
     const results = await query(sql, params);
     
@@ -189,7 +189,7 @@ router.get('/products/top10', async (req, res) => {
       data: results
     });
   } catch (error) {
-    console.error('获取 Top10 商品失败：', error);
+    console.error('获取商品统计失败：', error);
     res.status(500).json({ success: false, error: '服务器错误' });
   }
 });

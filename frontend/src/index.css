@@ -414,3 +414,59 @@ tr:hover {
     height: 300px;
   }
 }
+
+/* 饼图悬浮效果 */
+.recharts-sector {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.recharts-pie-sector:hover .recharts-sector {
+  filter: brightness(1.1);
+}
+
+/* 原生SVG饼图 */
+.pie-chart-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  padding: 20px 0;
+}
+
+.pie-svg {
+  width: 300px;
+  height: 300px;
+}
+
+.pie-svg path {
+  cursor: pointer;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+}
+
+.pie-svg path:hover {
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+}
+
+.pie-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.legend-color {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+
+.legend-label {
+  font-size: 14px;
+  color: var(--text);
+}
