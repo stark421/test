@@ -43,7 +43,12 @@ async function initDatabase(options = {}) {
   const { inMemory = false } = options;
   console.log('正在初始化数据库...');
   
-  const SQL = await initSQL();
+  // Vercel 环境从 CDN 加载 WASM 文件
+  const SQL = await initSQL({
+    locateFile: process.env.VERCEL
+      ? () => 'https://sql.js.org/dist/sql-wasm.wasm'
+      : undefined
+  });
   
   // 文件模式下清理旧数据库
   if (!inMemory && fs.existsSync(DB_PATH)) {
