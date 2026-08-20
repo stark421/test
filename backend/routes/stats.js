@@ -53,13 +53,12 @@ router.get('/daily', async (req, res) => {
       }))
     });
   } catch (error) {
-    console.error('获取每日统计失败：', error);
-    res.status(500).json({ success: false, error: '服务器错误' });
+    console.error('获取每日统计失败�?, error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// GET /api/stats/summary - 获取汇总统计
-router.get('/summary', async (req, res) => {
+// GET /api/stats/summary - 获取汇总统�?router.get('/summary', async (req, res) => {
   try {
     const { start, end } = req.query;
     
@@ -108,12 +107,11 @@ router.get('/summary', async (req, res) => {
     });
   } catch (error) {
     console.error('获取汇总统计失败：', error);
-    res.status(500).json({ success: false, error: '服务器错误' });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// GET /api/stats/stores - 各门店统计
-router.get('/stores', async (req, res) => {
+// GET /api/stats/stores - 各门店统�?router.get('/stores', async (req, res) => {
   try {
     const { start, end } = req.query;
     
@@ -162,8 +160,8 @@ router.get('/stores', async (req, res) => {
       data: results
     });
   } catch (error) {
-    console.error('获取门店统计失败：', error);
-    res.status(500).json({ success: false, error: '服务器错误' });
+    console.error('获取门店统计失败�?, error);
+    res.status(500).json({ success: false, error: '服务器错�? });
   }
 });
 
@@ -217,8 +215,8 @@ router.get('/products/top10', async (req, res) => {
       data: results
     });
   } catch (error) {
-    console.error('获取商品统计失败：', error);
-    res.status(500).json({ success: false, error: '服务器错误' });
+    console.error('获取商品统计失败�?, error);
+    res.status(500).json({ success: false, error: '服务器错�? });
   }
 });
 
@@ -228,8 +226,8 @@ router.get('/stores/list', async (req, res) => {
     const results = await query('SELECT * FROM stores ORDER BY store_id');
     res.json({ success: true, data: results });
   } catch (error) {
-    console.error('获取门店列表失败：', error);
-    res.status(500).json({ success: false, error: '服务器错误' });
+    console.error('获取门店列表失败�?, error);
+    res.status(500).json({ success: false, error: '服务器错�? });
   }
 });
 
@@ -239,8 +237,8 @@ router.get('/products/list', async (req, res) => {
     const results = await query('SELECT * FROM products ORDER BY product_id');
     res.json({ success: true, data: results });
   } catch (error) {
-    console.error('获取商品列表失败：', error);
-    res.status(500).json({ success: false, error: '服务器错误' });
+    console.error('获取商品列表失败�?, error);
+    res.status(500).json({ success: false, error: '服务器错�? });
   }
 });
 
@@ -289,8 +287,8 @@ router.get('/payment', async (req, res) => {
       data: results
     });
   } catch (error) {
-    console.error('获取支付方式统计失败：', error);
-    res.status(500).json({ success: false, error: '服务器错误' });
+    console.error('获取支付方式统计失败�?, error);
+    res.status(500).json({ success: false, error: '服务器错�? });
   }
 });
 
