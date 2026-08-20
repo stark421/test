@@ -1,8 +1,5 @@
 {
   "version": 2,
-  "deploymentProtection": {
-    "prd": "none"
-  },
   "functions": {
     "api/index.js": {
       "includeFiles": "backend/data/**"
