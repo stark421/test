@@ -94,7 +94,7 @@ function PieChartSVG({ data, nameKey, valueKey, title, formatValue, size = 'norm
   );
 }
 
-function Dashboard({ dailyData, summaryData, topProducts, paymentData, storeData, loading, formatCurrency, formatNumber }) {
+function Dashboard({ dailyData, topProducts, paymentData, storeData, loading, formatCurrency, formatNumber }) {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
 
   const handleSort = (key) => {
@@ -138,28 +138,6 @@ function Dashboard({ dailyData, summaryData, topProducts, paymentData, storeData
 
   return (
     <>
-      {/* 汇总统计卡片 */}
-      {summaryData && (
-        <div className="stats-cards">
-          <div className="stat-card">
-            <h3>总营业额</h3>
-            <div className="value primary">{formatCurrency(summaryData.totalAmount)}</div>
-          </div>
-          <div className="stat-card">
-            <h3>总订单数</h3>
-            <div className="value">{formatNumber(summaryData.totalOrders)}</div>
-          </div>
-          <div className="stat-card">
-            <h3>平均客单价</h3>
-            <div className="value success">{formatCurrency(summaryData.avgOrderAmount)}</div>
-          </div>
-          <div className="stat-card">
-            <h3>总销量</h3>
-            <div className="value">{formatNumber(summaryData.totalQty)}</div>
-          </div>
-        </div>
-      )}
-
       {/* 图表区域 */}
       <div className="charts-grid">
         <div className="chart-card">

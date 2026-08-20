@@ -10,8 +10,30 @@ const csv = require('csv-parser');
 // 标准化日期格式为 YYYY-MM-DD
 function normalizeDate(dateStr) {
   if (!dateStr) return null;
+  
+  // 去除首尾空格
+  dateStr = dateStr.trim();
+  
   // 处理 2026/05/21 格式
-  return dateStr.replace(/\//g, '-');
+  if (dateStr.includes('/')) {
+    return dateStr.replace(/\//g, '-');
+  }
+  
+  // 处理 DD-MM-YYYY 格式（如 15-07-2026）
+  const ddmmyyyyPattern = /^(\d{2})-(\d{2})-(\d{4})$/;
+  const ddmmyyyyMatch = dateStr.match(ddmmyyyyPattern);
+  if (ddmmyyyyMatch) {
+    const [, day, month, year] = ddmmyyyyMatch;
+    // 验证日期合理性
+    const dayNum = parseInt(day);
+    const monthNum = parseInt(month);
+    if (dayNum >= 1 && dayNum <= 31 && monthNum >= 1 && monthNum <= 12) {
+      return `${year}-${month}-${day}`;
+    }
+  }
+  
+  // 已经是 YYYY-MM-DD 格式
+  return dateStr;
 }
 
 // 去除字符串首尾空格
