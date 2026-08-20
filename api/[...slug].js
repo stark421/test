@@ -1,4 +1,4 @@
-// Vercel Serverless Function 入口
+// Vercel Serverless Function entry point
 let app;
 let loadError;
 
@@ -18,7 +18,7 @@ module.exports = async (req, res) => {
     return res.status(200).end();
   }
 
-  // 调试信息
+  // Debug info endpoint
   const url = new URL(req.url, `http://${req.headers.host}`);
   if (url.pathname === '/api/debug-info') {
     return res.status(200).json({
@@ -27,15 +27,20 @@ module.exports = async (req, res) => {
       appType: typeof app,
       isFunction: typeof app === 'function',
       url: req.url,
-      pathname: url.pathname
+      pathname: url.pathname,
     });
   }
 
   if (loadError) {
     return res.status(500).json({
       success: false,
-      error: 'Server load failed: ' + loadError.message
+      error: 'Server load failed: ' + loadError.message,
     });
+  }
+
+  // Ensure req.url has /api prefix for Express routing
+  if (!req.url.startsWith('/api')) {
+    req.url = '/api' + req.url;
   }
 
   try {
