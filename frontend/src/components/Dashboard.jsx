@@ -95,6 +95,32 @@ function PieChartSVG({ data, nameKey, valueKey, title, formatValue, size = 'norm
 }
 
 function Dashboard({ dailyData, summaryData, topProducts, paymentData, storeData, loading, formatCurrency, formatNumber }) {
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
+
+  const handleSort = (key) => {
+    setSortConfig((prev) => {
+      if (prev.key === key) {
+        if (prev.direction === 'desc') return { key, direction: 'asc' };
+        if (prev.direction === 'asc') return { key: null, direction: null };
+      }
+      return { key, direction: 'desc' };
+    });
+  };
+
+  const getSortIndicator = (key) => {
+    if (sortConfig.key !== key) return ' ↕';
+    return sortConfig.direction === 'desc' ? ' ↓' : ' ↑';
+  };
+
+  const sortedProducts = useMemo(() => {
+    if (!sortConfig.key || !sortConfig.direction) return topProducts;
+    const sorted = [...topProducts].sort((a, b) => {
+      const diff = a[sortConfig.key] - b[sortConfig.key];
+      return sortConfig.direction === 'desc' ? -diff : diff;
+    });
+    return sorted;
+  }, [topProducts, sortConfig]);
+
   const categoryData = useMemo(() => {
     const map = {};
     topProducts.forEach((p) => {
@@ -241,21 +267,21 @@ function Dashboard({ dailyData, summaryData, topProducts, paymentData, storeData
 
       {/* 全部商品表格 */}
       <div className="table-card">
-        <h3>全部商品（按营业额）</h3>
+        <h3>商品销售详情</h3>
         <table>
           <thead>
             <tr>
               <th>排名</th>
               <th>商品名称</th>
               <th>品类</th>
-              <th>单价</th>
-              <th>销量</th>
-              <th>营业额</th>
-              <th>订单数</th>
+              <th className="sortable" onClick={() => handleSort('unit_price')}>单价{getSortIndicator('unit_price')}</th>
+              <th className="sortable" onClick={() => handleSort('total_qty')}>销量{getSortIndicator('total_qty')}</th>
+              <th className="sortable" onClick={() => handleSort('total_amount')}>营业额{getSortIndicator('total_amount')}</th>
+              <th className="sortable" onClick={() => handleSort('order_count')}>订单数{getSortIndicator('order_count')}</th>
             </tr>
           </thead>
           <tbody>
-            {topProducts.map((product, index) => (
+            {sortedProducts.map((product, index) => (
               <tr key={product.product_id}>
                 <td>
                   <span className={`rank ${index < 3 ? 'top3' : ''}`}>

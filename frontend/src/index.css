@@ -175,6 +175,21 @@ th {
   color: var(--text-secondary);
 }
 
+th.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+
+th.sortable:hover {
+  background: #e6f7ff;
+  color: var(--primary);
+}
+
+th.sortable:active {
+  background: #bae7ff;
+}
+
 tr:hover {
   background: #f5f5f5;
 }
