@@ -218,11 +218,10 @@ function App() {
           formatCurrency={formatCurrency}
           formatNumber={formatNumber}
         />
-
-        <div className="chat-section">
-          <ChatBox />
-        </div>
       </div>
+
+      {/* 悬浮AI问答 */}
+      <ChatBox />
     </div>
   );
 }
